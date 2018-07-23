@@ -1,7 +1,7 @@
 import click
 import logging
 
-import pVector
+import microor
 from pudb import set_trace as st
 
 single_process = False
