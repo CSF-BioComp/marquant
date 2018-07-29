@@ -4,24 +4,13 @@ import numpy as np
 import pandas as pd
 import os
 import logging
+from configfy import configfy as cfy
 
 import glob
 from concurrent.futures import ProcessPoolExecutor
 import logging
 from functools import partial
 from tqdm import tqdm
-
-# Extracted grid origin by hand
-grid_positions = [
-  [138, 114],
-  [255, 114],
-  [138, 256],
-  [255, 256],
-  [138, 398],
-  [255, 398],
-  [138, 540],
-  [255, 540]
-]
 
 
 def slide_experiment(image_folder_path, single_process):
@@ -62,7 +51,8 @@ def slide_quantifiaction_wrapper(pack):
         return pd.DataFrame()
 
 
-def slide_quantifiaction(image_path, img_id, ref_image_path='reference_plate.png'):
+@cfy
+def slide_quantifiaction(image_path, img_id, ref_image_path='reference_plate.png', grid_positions=[]):
     """Quantify the micro array cells in given image using a reference image
     
     Arguments:
@@ -86,12 +76,12 @@ def slide_quantifiaction(image_path, img_id, ref_image_path='reference_plate.png
 
     try:
         logging.debug('Aligning target image to reference image ...')
-        aligned_img, matches = alignImages(target, ref, max_feats, good_matches)
+        aligned_img, matches = alignImages(target_img, ref_img)
     except Exception as e:
         logging.error('Aligning image to reference image failed! Cannot perform quantification!')
         return quantified_plate
 
-    # Perform quantificaiton on grayscale image
+    # Perform quantification on grayscale image
     aligned_gray_img = cv.cvtColor(aligned_img, cv.COLOR_BGR2GRAY)
 
     # Extract grids
@@ -126,8 +116,8 @@ def slide_quantifiaction(image_path, img_id, ref_image_path='reference_plate.png
 
     return quantified_plate
 
-
-def generate_annotated_image(img, quantified_grid, zoom_factor=4, grid_size=48):
+@cfy
+def generate_annotated_image(img, quantified_grid, zoom_factor=4, grid_size=48, grid_positions=[]):
     big_img = cv.resize(img, None, fx=zoom_factor, fy=zoom_factor, interpolation=cv.INTER_CUBIC)
     annotated_image = label_intensities(big_img, 
                             grid_positions =[(x*zoom_factor ,y*zoom_factor) for x,y in grid_positions], 
@@ -138,7 +128,7 @@ def generate_annotated_image(img, quantified_grid, zoom_factor=4, grid_size=48):
                            )
     return annotated_image
 
-
+@cfy
 def label_intensities(img, grid_positions, values, grid_size=48, nrows=4, ncols=4, strformat='%.1f', grid_color=(0, 255, 0), text_color=(255, 0, 0)):
     labeled = img.copy()
     for grid_pos,(x,y) in enumerate(grid_positions):
@@ -157,12 +147,13 @@ def label_intensities(img, grid_positions, values, grid_size=48, nrows=4, ncols=
 
     return labeled
 
-
+@cfy
 def get_grid_elements(roi, ncols=4, nrows=4):
     rows = np.split(roi, nrows, axis=0)
     cells = [np.split(row, ncols, axis=1) for row in rows]
     return np.stack(cells)
 
+@cfy
 def extract_all_grids(image, grid_pos, grid_size=48):
     grids = []
     for x, y in grid_pos:
@@ -209,14 +200,14 @@ def top_median(image, top_ratio=5.0):
     return np.median(get_top_image(image, top_ratio=top_ratio))
 
 
-
-def alignImages(im1, im2, max_features=500, good_match_percent=0.10):
+@cfy
+def alignImages(im1, im2, alignment_max_features=500, alignment_good_match_percent=0.10):
   # Convert images to grayscale
   im1Gray = cv.cvtColor(im1, cv.COLOR_BGR2GRAY)
   im2Gray = cv.cvtColor(im2, cv.COLOR_BGR2GRAY)
    
   # Detect ORB features and compute descriptors.
-  orb = cv.ORB_create(max_features)
+  orb = cv.ORB_create(alignment_max_features)
   keypoints1, descriptors1 = orb.detectAndCompute(im1Gray, None)
   keypoints2, descriptors2 = orb.detectAndCompute(im2Gray, None)
    
@@ -228,7 +219,7 @@ def alignImages(im1, im2, max_features=500, good_match_percent=0.10):
   matches.sort(key=lambda x: x.distance, reverse=False)
  
   # Remove not so good matches
-  numGoodMatches = int(len(matches) * good_match_percent)
+  numGoodMatches = int(len(matches) * alignment_good_match_percent)
   matches = matches[:numGoodMatches]
  
   # Draw top matches
