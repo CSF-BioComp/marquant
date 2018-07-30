@@ -7,40 +7,36 @@ import logging
 from configfy import configfy as cfy
 
 import glob
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, as_completed
 import logging
 from functools import partial
 from tqdm import tqdm
 
 
 def slide_experiment(image_folder_path, single_process):
+
+    # Find all tif images in directory
     imgfiles = glob.glob(os.path.join(image_folder_path, '**/*.tif'), recursive=True) 
+    N = len(imgfiles)
 
-    # Wrap in progress bar
-    pack = zip(imgfiles, range(len(imgfiles))) 
-    imgfiles = tqdm(imgfiles, desc='Image Quantification')
-
-    logging.info('Found %s files ... ' % (len(imgfiles)))
-    partial_results = []
-    if single_process:
-        for p in pack:
-            partial_results.append(slide_quantifiaction_wrapper(p))
+    if N == 0:
+        logging.warn('No images found!')
     else:
-        with ProcessPoolExecutor(max_workers=None) as executor:
-            it = executor.map(slide_quantifiaction_wrapper, pack)
-        # Unpack
-        partial_results = [x for x in it]
-
-    # Join partial results and order table
-    logging.debug('Joining partial results ...') 
-    exp_results = pd.concat(partial_results, sort=False)
-    sort_order = ['plate_id', 'cell', 'row', 'column']
-    exp_results.sort_values(sort_order, inplace=True)
-    
-    # Write results to csv
-    output_path = os.path.join(image_folder_path, 'results.csv')
-    logging.info('Writing results to %s ...', output_path)
-    exp_results.to_csv(output_path, index=False)
+        # Run on multiple processes and track using tqdm
+        pack = zip(imgfiles, range(N))
+        tqdm_kwargs = {'desc': 'Image Quantification ', 'total': N} 
+        partial_results = multiprocess_tracking(slide_quantifiaction_wrapper, pack, tqdm_kwargs=tqdm_kwargs, single_process=single_process)
+        
+        #  Join partial results and order table
+        logging.debug('Joining partial results ...') 
+        exp_results = pd.concat(partial_results, sort=False)
+        sort_order = ['plate_id', 'cell', 'row', 'column']
+        exp_results.sort_values(sort_order, inplace=True)
+        
+        # Write results to csv
+        output_path = os.path.join(image_folder_path, 'results.csv')
+        logging.info('Writing results to %s ...', output_path)
+        exp_results.to_csv(output_path, index=False)
 
 
 def slide_quantifiaction_wrapper(pack):
@@ -242,3 +238,47 @@ def alignImages(im1, im2, alignment_max_features=500, alignment_good_match_perce
    
   return im1Reg, imMatches
 
+
+# This should go into a separate module at some point
+def multiprocess_tracking(func, iter, args=(), kwargs={}, tqdm_kwargs={}, single_process=False, max_workers=None, expand_args=False):
+    """Using ProcessPoolExecutor to run *func* on multiple processes
+    
+    Arguments:
+        func {function} -- Function to be executed
+        iter {iterable} -- Call function on each of the elements
+    
+    Keyword Arguments:
+        args {tuple} -- Arguments to pass to func (default: {()})
+        kwargs {dict} -- kwargs passed to func (default: {{}})
+        tqdm_kwargs {dict} -- kwargs passed to tqdm (default: {{}})
+        single_process {bool} -- If set *True* will run in a single process (usefull for debugging) (default: {False})
+        max_workers {[type]} -- Maximum number of workers to be used (default: {None})
+        expand_args {[bool]} -- If set *True* expand arguments by calling func(*arg) on each
+    
+    Returns:
+        [type] -- A list of results returned by func
+    """
+    # Store the parts here
+    parts = []
+
+    if single_process:
+        for i in iter:
+            if expand_args:
+                part = func(*i, *args, **kwargs)
+            else:
+                part = func(i, *args, **kwargs)
+            parts.append(part)
+    else:
+        # Multi process
+        futures = []
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            for i in iter:
+                if expand_args:
+                    future = executor.submit(func, *i, *args, **kwargs)
+                else:
+                    future = executor.submit(func, i, *args, **kwargs)
+                futures.append(future)
+            
+            for finished_future in tqdm(as_completed(futures), **tqdm_kwargs):
+                parts.append(finished_future.result())
+    return parts

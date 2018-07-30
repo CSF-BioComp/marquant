@@ -24,10 +24,10 @@ def microorCLI(image_folder, config, verbose, run_single_process):
     elif verbose >= 2:
         logconsolelevel = logging.INFO
     else:
-        logconsolelevel = logging.INFO
+        logconsolelevel = logging.WARN
  
     #Setup logging to file
-    logging.basicConfig(level=logging.DEBUG, filename='last_log.txt', filemode="w")
+    logging.basicConfig(level=logging.DEBUG, filename='last_log.txt', filemode='w')
 
     #Add logging to the console
     console = logging.StreamHandler()
@@ -41,7 +41,6 @@ def microorCLI(image_folder, config, verbose, run_single_process):
     else:
         logging.info('Running in multiprocessing process mode!')
     
-    st()
     current_config = configfy.set_active_config_file(config)
     if current_config is None:
         logging.error('Cannot load config file. Will abort!')
