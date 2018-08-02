@@ -19,9 +19,9 @@ def microorCLI(image_folder, config, verbose, run_single_process):
     """
     Automatic Object Recognition and quantification of micro array images
     """
-    if verbose >= 3:
+    if verbose >= 2:
         logconsolelevel = logging.DEBUG
-    elif verbose >= 2:
+    elif verbose >= 1:
         logconsolelevel = logging.INFO
     else:
         logconsolelevel = logging.WARN
