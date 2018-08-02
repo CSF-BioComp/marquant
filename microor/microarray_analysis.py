@@ -12,6 +12,8 @@ import logging
 from functools import partial
 from tqdm import tqdm
 
+#from pudb import set_trace as st
+
 
 def slide_experiment(image_folder_path, single_process):
 
@@ -98,7 +100,9 @@ def slide_quantifiaction(image_path, img_id, ref_image_path='reference_plate.png
 
     # Generate an annotated image
     annotated = generate_annotated_image(aligned_img, quantgrids)
-    a_img_path = '%s_Labeled.png' % os.path.splitext(image_path)[0]
+    annotated_dir = os.path.join(os.path.dirname(image_path), 'annotated_images')
+    os.makedirs(annotated_dir, exist_ok=True)
+    a_img_path = os.path.join(annotated_dir, '%s_Labeled.png' % os.path.basename(image_path))
     logging.info('Writing annotated image to %s ...', a_img_path)
     cv.imwrite(a_img_path, annotated)
 
