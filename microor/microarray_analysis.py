@@ -24,6 +24,11 @@ def slide_experiment(image_folder_path, single_process):
     if N == 0:
         logging.warn('No images found!')
     else:
+        # Order the images extracting any number in the base filename
+        img_ids = [int(''.join(filter(str.isdigit, os.path.basename(filename)))) for filename in imgfiles]
+        img_order = np.argsort(img_ids)
+        imgfiles = [imgfiles[i] for i in img_order]
+    
         # Run on multiple processes and track using tqdm
         pack = zip(imgfiles, range(N))
         tqdm_kwargs = {'desc': 'Image Quantification ', 'total': N} 
