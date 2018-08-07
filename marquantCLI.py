@@ -2,10 +2,9 @@ import click
 import logging
 import configfy
 
-import microor
 from pudb import set_trace as st
 
-import microor
+import marquant
 
 single_process = False
 
@@ -15,7 +14,7 @@ single_process = False
 @click.argument('config')
 @click.option('-v', '--verbose', count=True)
 @click.option('--single-process', 'run_single_process', is_flag=True, help='If set will run in a single process')
-def microorCLI(image_folder, config, verbose, run_single_process):
+def marquantCLI(image_folder, config, verbose, run_single_process):
     """
     Automatic Object Recognition and quantification of micro array images
     """
@@ -47,8 +46,8 @@ def microorCLI(image_folder, config, verbose, run_single_process):
         exit(1)
 
     # TODO: Load configfy configuration file based on template
-    microor.slide_experiment(image_folder, single_process)
+    marquant.slide_experiment(image_folder, single_process)
 
 
 if __name__ == '__main__':
-    microorCLI()
+    marquantCLI()
