@@ -1,30 +1,33 @@
 import click
 import logging
+import configfy
 
 import microor
 from pudb import set_trace as st
 
+import microor
+
 single_process = False
 
-@click.group()
-@click.version_option(0.1)
-@click.argument('template')
+@click.command()
+@click.version_option(0.2)
 @click.argument('image-folder')
+@click.argument('config')
 @click.option('-v', '--verbose', count=True)
 @click.option('--single-process', 'run_single_process', is_flag=True, help='If set will run in a single process')
-def microorCLI(template, image_folder, verbose, run_single_process):
+def microorCLI(image_folder, config, verbose, run_single_process):
     """
     Automatic Object Recognition and quantification of micro array images
     """
-    if verbose >= 3:
+    if verbose >= 2:
         logconsolelevel = logging.DEBUG
-    elif verbose >= 2:
+    elif verbose >= 1:
         logconsolelevel = logging.INFO
     else:
-        logconsolelevel = logging.INFO
+        logconsolelevel = logging.WARN
  
     #Setup logging to file
-    logging.basicConfig(level=logging.DEBUG, filename='last_log.txt', filemode="w")
+    logging.basicConfig(level=logging.DEBUG, filename='last_log.txt', filemode='w')
 
     #Add logging to the console
     console = logging.StreamHandler()
@@ -38,9 +41,13 @@ def microorCLI(template, image_folder, verbose, run_single_process):
     else:
         logging.info('Running in multiprocessing process mode!')
     
+    current_config = configfy.set_active_config_file(config)
+    if current_config is None:
+        logging.error('Cannot load config file. Will abort!')
+        exit(1)
 
     # TODO: Load configfy configuration file based on template
-    slide_experiment(image_folder, single_process)
+    microor.slide_experiment(image_folder, single_process)
 
 
 if __name__ == '__main__':
