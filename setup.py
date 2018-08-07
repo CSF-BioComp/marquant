@@ -11,7 +11,7 @@ setuptools.setup(
     description="Automatic Object Recognition and quantification of micro array (and other) images",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/CSF-BioComp/marquant.git",
+    url="https://github.com/VBCF-BioComp/marquant.git",
     packages=setuptools.find_packages(),
     scripts=['marquantCLI.py'],
     classifiers=(
